@@ -8,6 +8,11 @@
 
 ## Full Setup Guide
 
+### Troubleshooting tips
+
+- The terminal in side of VS code can be blocked by an unknown firewall (try the native terminal)
+
+
 ### Repository Setup
 
 Clone the repository:
