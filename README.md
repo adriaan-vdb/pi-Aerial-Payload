@@ -1,5 +1,3 @@
-+++markdown
-
 # QuadCam
 
 > *Description to be filled in.*
@@ -10,17 +8,10 @@
 
 ### Troubleshooting tips
 
-- The terminal in side of VS code can be blocked by an unknown firewall (try the native terminal)
+- Make sure your privacy and secuirty setting allow network access so you can ssh into the R-Pi from the terminal 
 
 
 ### Repository Setup
-
-Clone the repository:
-
-```
-git clone <your-repo-url>
-cd QuadCam
-```
 
 ---
 
@@ -132,18 +123,52 @@ ping <laptop-ip>
 ```
 
 
+### Recommended Workflow: 
+> Remote Development via SSH + VS Code: 
+> Use VS Code to open Pi remotely
+- Install Visual Studio Code
+- Install the Remote - SSH extension:
+Extensions (⇧⌘X) → search "Remote - SSH" → Install
+- Open Command Palette (⇧⌘P) → Remote-SSH: Connect to Host…
+- Select your Pi IP (might need to add it to the config) 
+- You’ll be connected to your Pi and can edit code directly in the remote environment.
 
-5. Run configuration:
+!Important
+Clone the repository:
 
-   ```
-    sudo raspi-config
-    # Interface Options → Enable Camera
-    # Interface Options → Enable I2C
-    # Interface Options → Enable VNC (optional)
-    sudo reboot
-   ```
+```
+mkdir -p ~/dev/pi-Aerial-Payload
+cd ~/dev/pi-Aerial-Payload
+git clone https://github.com/adriaan-vdb/pi-Aerial-Payload.git
+cd pi-Aerial-Payload
+```
 
-> The QuadCam HAT uses the CSI-2 camera interface and I²C EEPROM.
+
+## Step 5 - Run Configuration
+
+Open the Raspberry Pi configuration utility:
+
+```bash
+sudo raspi-config
+```
+
+Navigate to the following options using the arrow keys and enable each:
+
+- **Interface Options**
+  - **Camera** → Enable
+  - **I2C** → Enable *(required for QuadCam HAT EEPROM)*
+  - **VNC** → Enable *(optional: for remote desktop access)*
+  - **SSH** → Enable *(if not already enabled: allows terminal access)*
+  - *(SPI can be left disabled unless used by other peripherals)*
+
+After enabling, press `<Finish>` and reboot the Pi:
+
+```bash
+sudo reboot
+```
+
+> The QuadCam HAT uses the CSI-2 camera interface and I²C EEPROM, both of which must be enabled for correct operation.
+
 
 ---
 
@@ -158,16 +183,38 @@ sudo apt update && sudo apt full-upgrade -y
 Install required system packages:
 
 ```
+sudo apt update
 sudo apt install -y git python3-pip libatlas-base-dev \
-    libopenjp2-7 libtiff5 libcamera-utils build-essential cmake pkg-config
+    libopenjp2-7 libtiff-dev libcamera-apps \
+    build-essential cmake pkg-config
+sudo apt install libcamera-dev
+sudo apt install -y libcap-dev
 ```
 
 Install Python libraries:
 
+1. Install virtualenv tools if not present
+sudo apt install -y python3-venv python3-full
+
+2. Create a virtual environment (in your project dir)
+python3 -m venv venv
+
+3. Activate it
+source venv/bin/activate
+
+4. Upgrade pip
+pip install --upgrade pip
+
+5. Install your project dependencies
+```bash
+pip install "opencv-python==4.5.5.64" "picamera2==0.3.18" \
+            "RPi.GPIO==0.7.1a4" numpy matplotlib
 ```
-python3 -m pip install --upgrade pip
-pip install "opencv-python==4.6.0" "picamera2==0.3.18" \
-    "RPi.GPIO==0.7.1a4" numpy matplotlib
+
+To exit the venv, run:
+
+```bash
+deactivate
 ```
 
 > These versions match those used in the original thesis implementation.
@@ -176,11 +223,29 @@ pip install "opencv-python==4.6.0" "picamera2==0.3.18" \
 
 ## Step 4 – Install ArduCam QuadCam Driver
 
+Official ArduCam Documentation
+- https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/Multi-Camera-CamArray/#quadrascopic-stereo-synchronized-camera-kit
+
+For Raspberry Pi Bookworm/Bullseye users running on Pi 4, please do the following:
+Bookworm OS on Pi4
+
+sudo nano /boot/firmware/config.txt 
+#Find the line: camera_auto_detect=1, update it to:
+camera_auto_detect=0
+dtoverlay=imx219
+#Save and rebootsudo i2cset -y 10 0x0c 0x00
+.
+
+
+
 ```
-git clone https://github.com/ArduCAM/Arducam-Pi-Setup.git ~/arducam_setup
-cd ~/arducam_setup
-chmod +x arducamsetup.sh
-sudo ./arducamsetup.sh
+git clone https://github.com/ArduCAM/RaspberryPi.git ~/arducam_setup
+cd ~/arducam_setup/Multi_Camera_Adapter/Multi_Adapter_Board_4Channel/Legacy/Multi_Camera_Adapter_V2.1_python/
+chmod +x init_camera.sh
+sudo ./init_camera.shsudo nano /boot/firmware/config.txt 
+
+# Optional: test with adapter preview
+python3 previewOpencv.py
 ```
 
 After reboot, verify the camera stack:
