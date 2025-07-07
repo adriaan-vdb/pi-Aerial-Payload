@@ -13,6 +13,7 @@ import base64
 UI_COLOR = (31, 31, 186)  # Green color for all text overlays (BGR format)
 
 # Camera Configuration Matrix - Change this to reorder cameras in the 2x2 grid
+# Labels are live updated using this configuration
 CAMERA_CONFIG = [
     [3, 0], 
     [2, 1] 
@@ -326,6 +327,129 @@ class EnhancedQuadCamStreamer:
                 pass
             return False, f"Error capturing image: {e}"
     
+    def calibrate_capture(self):
+        """Capture 20 images in sequence with 2-second delays for calibration"""
+        if not self.camera:
+            return False, "Camera not initialized"
+        
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            calibration_dir = f"{self.capture_dir}/calibration_{timestamp}"
+            
+            # Create calibration directory
+            if not os.path.exists(calibration_dir):
+                os.makedirs(calibration_dir)
+            
+            print("Starting calibration capture sequence...")
+            
+            # Stop camera to allow configuration change
+            self.camera.stop()
+            
+            # Configure capture mode for full resolution
+            self.camera.configure(self.capture_config)
+            self.camera.start()
+            
+            # Apply current controls
+            self.update_camera_controls()
+            
+            # Wait for camera to stabilize
+            time.sleep(1)
+            
+            captured_files = []
+            
+            for i in range(20):
+                try:
+                    # Capture raw image
+                    raw_frame = self.camera.capture_array()
+                    
+                    # Convert from RGB to BGR
+                    if len(raw_frame.shape) == 3:
+                        raw_frame = cv2.cvtColor(raw_frame, cv2.COLOR_RGB2BGR)
+                    
+                    # Apply brightness compensation
+                    compensated_frame = self.apply_brightness_compensation(raw_frame)
+                    
+                    # Save the compensated image
+                    filename = f"{calibration_dir}/calibration_{i+1:02d}.png"
+                    cv2.imwrite(filename, compensated_frame)
+                    captured_files.append(filename)
+                    
+                    print(f"Calibration image {i+1}/20 captured")
+                    
+                    # Wait 2 seconds before next capture (except for the last one)
+                    if i < 19:
+                        time.sleep(2)
+                        
+                except Exception as e:
+                    print(f"Error capturing calibration image {i+1}: {e}")
+                    continue
+            
+            # Switch back to preview configuration
+            self.camera.stop()
+            
+            # Use same OV9281 optimized controls as setup
+            basic_controls = {
+                "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                "Contrast": CAMERA_SETTINGS["contrast"]
+            }
+            try:
+                camera_controls = self.camera.camera_controls
+                if "AeEnable" in camera_controls:
+                    basic_controls["AeEnable"] = False
+                if "AwbEnable" in camera_controls:
+                    basic_controls["AwbEnable"] = False
+            except:
+                pass
+                
+            preview_config = self.camera.create_preview_configuration(
+                main={"size": (1280, 200)},
+                lores={"size": (640, 100)},
+                controls=basic_controls
+            )
+            self.camera.configure(preview_config)
+            self.camera.start()
+            
+            # Apply controls after starting
+            self.camera.set_controls(basic_controls)
+            
+            self.capture_count += len(captured_files)
+            
+            print(f"Calibration sequence complete: {len(captured_files)} images captured")
+            return True, f"Calibration complete: {len(captured_files)} images saved to {calibration_dir}"
+            
+        except Exception as e:
+            # Ensure we're back in preview mode
+            try:
+                self.camera.stop()
+                
+                # Use OV9281 optimized controls for error recovery
+                basic_controls = {
+                    "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                    "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                    "Contrast": CAMERA_SETTINGS["contrast"]
+                }
+                try:
+                    camera_controls = self.camera.camera_controls
+                    if "AeEnable" in camera_controls:
+                        basic_controls["AeEnable"] = False
+                    if "AwbEnable" in camera_controls:
+                        basic_controls["AwbEnable"] = False
+                except:
+                    pass
+                    
+                preview_config = self.camera.create_preview_configuration(
+                    main={"size": (1280, 200)},
+                    lores={"size": (640, 100)},
+                    controls=basic_controls
+                )
+                self.camera.configure(preview_config)
+                self.camera.start()
+                self.camera.set_controls(basic_controls)
+            except:
+                pass
+            return False, f"Error during calibration: {e}"
+    
     def get_brightness_settings(self):
         """Get current brightness compensation settings"""
         return BRIGHTNESS_COMPENSATION
@@ -379,6 +503,12 @@ def generate_frames():
 @app.route('/')
 def index():
     """Main page with camera controls"""
+    # Get camera positions from config
+    top_left_cam = CAMERA_CONFIG[0][0]
+    top_right_cam = CAMERA_CONFIG[0][1]
+    bottom_left_cam = CAMERA_CONFIG[1][0]
+    bottom_right_cam = CAMERA_CONFIG[1][1]
+    
     return '''
     <!DOCTYPE html>
     <html>
@@ -408,6 +538,44 @@ def index():
             .video-container { 
                 text-align: center; 
                 margin: 20px 0; 
+                position: relative;
+                display: inline-block;
+            }
+            .camera-layout {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin: 20px 0;
+            }
+            .camera-grid {
+                position: relative;
+                display: inline-block;
+            }
+            .camera-label {
+                position: absolute;
+                background-color: rgba(0, 0, 0, 0.3);
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 10;
+            }
+            .camera-label.top-left {
+                top: 5px;
+                left: 5px;
+            }
+            .camera-label.top-right {
+                top: 5px;
+                right: 5px;
+            }
+            .camera-label.bottom-left {
+                bottom: 5px;
+                left: 5px;
+            }
+            .camera-label.bottom-right {
+                bottom: 5px;
+                right: 5px;
             }
             .controls { 
                 text-align: center; 
@@ -519,12 +687,19 @@ def index():
     <body>
         <div class="container">
             <h1>Enhanced QuadCam Web Live Preview</h1>
-            <div class="video-container">
-                <img src="/video_feed" alt="Camera Feed" id="cameraFeed" />
+            <div class="camera-layout">
+                <div class="camera-grid">
+                    <div class="camera-label top-left">Camera ''' + str(top_left_cam) + '''</div>
+                    <div class="camera-label top-right">Camera ''' + str(top_right_cam) + '''</div>
+                    <div class="camera-label bottom-left">Camera ''' + str(bottom_left_cam) + '''</div>
+                    <div class="camera-label bottom-right">Camera ''' + str(bottom_right_cam) + '''</div>
+                    <img src="/video_feed" alt="Camera Feed" id="cameraFeed" />
+                </div>
             </div>
             
             <div class="controls">
                 <button onclick="captureImage()">Capture Image</button>
+                <button onclick="calibrateCapture()">Calibrate (20 Images)</button>
                 <button onclick="refreshFeed()">Refresh Feed</button>
                 <button onclick="toggleBrightnessCompensation()">Toggle Brightness Compensation</button>
                 <button onclick="resetAllSettings()">Reset All Settings</button>
@@ -632,6 +807,30 @@ def index():
                     .catch(error => {
                         console.error('Error:', error);
                         showStatus('Error capturing image', 'error');
+                    });
+            }
+            
+            function calibrateCapture() {
+                showStatus('Starting calibration sequence...', 'success');
+                fetch('/calibrate', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        const statusDiv = document.getElementById('status');
+                        statusDiv.style.display = 'block';
+                        if (data.success) {
+                            statusDiv.className = 'status success';
+                            statusDiv.textContent = data.message;
+                        } else {
+                            statusDiv.className = 'status error';
+                            statusDiv.textContent = data.message;
+                        }
+                        setTimeout(() => {
+                            statusDiv.style.display = 'none';
+                        }, 5000);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showStatus('Error during calibration', 'error');
                     });
             }
             
@@ -775,6 +974,12 @@ def video_feed():
 def capture():
     """Capture image route"""
     success, message = camera_streamer.capture_image()
+    return jsonify({'success': success, 'message': message})
+
+@app.route('/calibrate', methods=['POST'])
+def calibrate():
+    """Calibration capture route"""
+    success, message = camera_streamer.calibrate_capture()
     return jsonify({'success': success, 'message': message})
 
 @app.route('/status')

@@ -2,6 +2,8 @@
 
 > *Description to be filled in.*
 
+The QuadCam system is a **stereo vision system for vegetation monitoring** that requires precise camera calibration, real-time processing, and hardware integration - making all these dependencies essential for the system to function properly as a complete multispectral imaging solution.
+
 ---
 
 ## Full Setup Guide
@@ -642,14 +644,6 @@ pi-Aerial-Payload/
 - **SSH issues**: Make sure your privacy and security settings allow network access so you can ssh into the R-Pi from the terminal (can be auto blocked on macOS)
 ---
 
-## Credits
-
-Initial development by **Hannah Page** as part of the **GENG5512 Engineering Research Project (Multispectral Imaging Drone Payload)**.
-
-# pi-Aerial-Payload
-
----
-
 ## Dependency Explanations
 
 This section explains why each dependency is required for the QuadCam stereo vision system for vegetation monitoring.
@@ -707,17 +701,9 @@ This section explains why each dependency is required for the QuadCam stereo vis
 - **`flask`** - Used in:
   - `WebLivePreview.py` - Web-based live camera preview and capture interface
 
-### Why These Specific Versions Matter
+  ---
 
-The specific versions (`opencv-python==4.5.5.64`, `picamera2==0.3.18`, `RPi.GPIO==0.7.1a4`) are locked to match the original thesis implementation, ensuring:
-- **Compatibility** - Known working configuration
-- **Reproducibility** - Same results as original research
-- **Stability** - Avoiding breaking changes in newer versions
+## Credits
 
-### Project Overview
+This project build on the initial work of **Hannah Page** as part of her **GENG5512 Engineering Research Project (Multispectral Imaging Drone Payload)**.
 
-The QuadCam system is a **stereo vision system for vegetation monitoring** that requires precise camera calibration, real-time processing, and hardware integration - making all these dependencies essential for the system to function properly as a complete multispectral imaging solution.
-
-
-```bash
-```
