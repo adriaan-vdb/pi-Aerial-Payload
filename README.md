@@ -705,5 +705,5 @@ This section explains why each dependency is required for the QuadCam stereo vis
 
 ## Credits
 
-This project build on the initial work of **Hannah Page** as part of her **GENG5512 Engineering Research Project (Multispectral Imaging Drone Payload)**.
+This project builds on the initial work of **Hannah Page** as part of her **GENG5512 Engineering Research Project (Multispectral Imaging Drone Payload)**.
 
