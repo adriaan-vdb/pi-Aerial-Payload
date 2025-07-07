@@ -1,0 +1,23 @@
+# Ignore all PNG files
+*.png
+
+# Ignore captures directory and all its contents
+captures/
+
+# Ignore common Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db 

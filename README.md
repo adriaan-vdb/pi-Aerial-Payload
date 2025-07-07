@@ -8,11 +8,6 @@
 
 > Note: MacOS was used to implement this system, but the README is valid for all operating systems
 
-1) [LLM Assistant](https://chatgpt.com/share/686b52ea-7a9c-8010-9c9a-e8f414262bff)
-### Prompts
-Make a troubleshooting entry into section _ of the README, formatted in plain text markdown to document the successful steps we performed, just output that segement
-sudo apt install -y libcap-dev
-
 ### Components:
 1) [Rasberry Pi 4 Model B](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
 2) [OV9281 Monochrome Global Shutter Camera](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/Global-Shutter/1MP-OV9281-OV9282/)
@@ -156,6 +151,10 @@ Extensions (⇧⌘X) → search "Remote - SSH" → Install
 !Important
 Clone the repository:
 
+CMD + SHIFT + P
+> File: Open Folder
+> Open PI-AERIAL-PAYLOAD
+
 ```
 mkdir -p ~/dev/pi-Aerial-Payload
 cd ~/dev/pi-Aerial-Payload
@@ -213,13 +212,13 @@ sudo reboot
 
 ### Update and upgrade the Pi:
 
-```
+```bash
 sudo apt update && sudo apt full-upgrade -y
 ```
 
 ### Install required system packages:
 
-```
+```bash
 sudo apt install -y git python3-pip libatlas-base-dev \
     libopenjp2-7 libtiff-dev libcap-dev \
     build-essential cmake pkg-config \
@@ -299,8 +298,6 @@ libcamera-still -t 5000 -n -o test.jpg
   ```bash
   sudo mkdir -p /usr/share/libcamera/ipa/rpi/vc4/
 
-
-
   wget -O install_pivariety_pkgs.sh https://github.com/ArduCAM/Arducam-Pivariety-V4L2-Driver/releases/download/install_script/install_pivariety_pkgs.sh
   chmod +x install_pivariety_pkgs.sh
   ./install_pivariety_pkgs.sh -p libcamera_dev
@@ -357,6 +354,8 @@ sudo apt install -y python3-venv python3-full
 ```
 2. Create a virtual environment with system site packages access (in your project dir)
 ```bash
+cd ~/Documents/pi-Aerial-Payload
+rm -rf venv
 python3 -m venv venv --system-site-packages
 ```
 > **Note**: The `--system-site-packages` flag is required to access the system `libcamera` libraries that picamera2 depends on.
@@ -371,7 +370,7 @@ pip install --upgrade pip
 ```
 5. Install your project dependencies
 ```bash
-pip install "opencv-python==4.5.5.64" "picamera2==0.3.18" "RPi.GPIO==0.7.1a4" numpy matplotlib
+pip install "opencv-python==4.5.5.64" "picamera2==0.3.18" "RPi.GPIO==0.7.1a4" numpy matplotlib flask
 ```
 
 To exit the venv, run:
@@ -405,27 +404,6 @@ python3 simple_camera_test.py
 
 > **Note**: This headless script captures 3 test images without requiring a display. Images are saved in a timestamped directory (e.g., `camera_test_20241213_143022/`). Expected image size is 2560x400 pixels (4 cameras combined).
 
-### Alternative: Original Capture Script (Requires VNC)
-
-If you have VNC enabled and want the original capture script with preview:
-
-```bash
-# Only run this if VNC is enabled and connected
-python3 Capture_V3.py
-```
-
-> **Note**: The original script requires VNC connection for GUI preview and will prompt you to press Enter before capturing images.
-
-### Split Images into Individual Cameras
-
-After capturing, split the combined image into individual camera feeds:
-
-```bash
-python3 Split_V3.py
-```
-
-> This separates the 2560x400 combined image into four individual 640x400 camera images.
-
 ---
 
 ## Step 8 – VNC Configuration (Optional but Recommended)
@@ -448,14 +426,52 @@ sudo reboot
 
 ```bash
 export QT_QPA_PLATFORM=vnc
-DISPLAY=:1
+DISPLAY=:0
+```
+#### To check VNC is running correctly
+```bash
+ps aux | grep vnc | grep -v grep
 ```
 
-#### Run the Script for Live View
+#### Live Preview Solutions
+
+**Option 1: Web-Based Live Preview (Recommended - Works without VNC)**
 ```bash
-# Only run this if VNC is enabled and connected
-python3 Capture_V3.py
+# Navigate to RPi_Code directory and activate virtual environment
+cd ~/Documents/pi-Aerial-Payload/RPi_Code
+source ../venv/bin/activate
+
+# Start the web-based live preview server
+python3 WebLivePreview.py
 ```
+
+Then open your web browser and go to:
+- **From your Phone:** `http://192.168.0.157:5000` (or your Pi's IP address)
+- **From the Pi locally:** `http://localhost:5000`
+- **From your computer:** `http://127.0.0.1:5000/`
+
+**To find your Pi's IP address:**
+```bash
+hostname -I
+```
+
+
+**Option 2: OpenCV GUI Live Preview (Requires VNC to view from laptop)**
+> This option has less latency but can't be viewed from a mobile device
+```bash
+# Set proper display environment and run OpenCV preview
+export DISPLAY=:0
+export QT_QPA_PLATFORM=xcb
+chmod 700 /run/user/1000
+python3 LivePreview.py
+```
+
+**Controls:**
+- **'c'** - Capture preview resolution image (1280x200)
+- **'q'** - Quit application  
+- **'f'** - Toggle fullscreen mode
+- **'ESC'** - Exit fullscreen mode
+
 
 ---
 
@@ -591,13 +607,19 @@ pi-Aerial-Payload/
 ├── README.md
 ├── RPi_Code/
 │   ├── simple_camera_test.py  # Headless camera test script
-│   ├── Capture_V3.py          # Main capture script (requires VNC)
+│   ├── WebLivePreview.py      # Web-based live preview (recommended)
+│   ├── LivePreview.py         # OpenCV GUI live preview (requires VNC)
+│   ├── Capture_V3.py          # Main capture script (batch mode)
 │   ├── Split_V3.py            # Image splitting utility
 │   ├── Stereo_V4.py           # Stereo calibration
 │   ├── LiveCal_V4.py          # Live preview and calibration
 │   ├── PostProc_V2.py         # Post-processing
 │   ├── VIGen.py               # Vegetation index generation
 │   └── DroneGPIO.py           # GPIO trigger integration
+├── captures/
+│   ├── split/                 # Individual camera images
+│   ├── live_preview/          # OpenCV live preview captures
+│   └── web_preview/           # Web preview captures
 ├── calibration_images/
 │   ├── raw/                   # Raw combined images
 │   └── split/                 # Individual camera images
@@ -623,11 +645,12 @@ pi-Aerial-Payload/
 
 ### Workflow Summary
 1. **Test** → Use `simple_camera_test.py` for headless camera testing
-2. **Capture** → Use `Capture_V3.py` for image acquisition (requires VNC)
-3. **Split** → Use `Split_V3.py` to separate camera feeds  
-4. **Calibrate** → Use `Stereo_V4.py` for stereo calibration
-5. **Live Preview** → Use `LiveCal_V4.py` for real-time processing
-6. **Post-Process** → Use `PostProc_V2.py` and `VIGen.py` for analysis
+2. **Live Preview** → Use `WebLivePreview.py` for real-time viewing and capture (recommended)
+3. **Batch Capture** → Use `Capture_V3.py` for automated image acquisition
+4. **Split** → Use `Split_V3.py` to separate camera feeds  
+5. **Calibrate** → Use `Stereo_V4.py` for stereo calibration
+6. **Live Processing** → Use `LiveCal_V4.py` for real-time stereo processing
+7. **Post-Process** → Use `PostProc_V2.py` and `VIGen.py` for analysis
 
 ### Troubleshooting
 - **Camera not found**: Check `/dev/video*` devices exist
@@ -697,6 +720,10 @@ This section explains why each dependency is required for the QuadCam stereo vis
 #### Visualization
 - **`matplotlib`** - Used in:
   - `Stereo_V4.py` - Plotting calibration results and stereo pair comparisons
+
+#### Web Interface
+- **`flask`** - Used in:
+  - `WebLivePreview.py` - Web-based live camera preview and capture interface
 
 ### Why These Specific Versions Matter
 
