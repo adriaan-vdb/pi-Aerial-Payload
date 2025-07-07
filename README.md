@@ -6,9 +6,15 @@
 
 ## Full Setup Guide
 
+### Components:
+1) [Rasberry Pi 4 Model B](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
+2) [OV9281 Monochrome Global Shutter Camera](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/Global-Shutter/1MP-OV9281-OV9282/)
+3) [Multi Camera HAT](https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/quick-start/#access-raspberry-pi-native-camera)
+4) [Entire Setup](https://www.arducam.com/arducam-1mp4-quadrascopic-camera-bundle-kit-for-raspberry-pi-nvidia-jetson-nano-xavier-nx-four-ov9281-global-shutter-monochrome-camera-modules-and-camarray-camera-hat.html)
+
 ### Troubleshooting tips
 
-- Make sure your privacy and secuirty setting allow network access so you can ssh into the R-Pi from the terminal 
+- Make sure your privacy and security settings allow network access so you can ssh into the R-Pi from the terminal (can be auto blocked on macOS)
 
 
 ### Repository Setup
@@ -223,20 +229,37 @@ deactivate
 
 ## Step 4 – Install ArduCam QuadCam Driver
 
-Official ArduCam Documentation
-- https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/Multi-Camera-CamArray/#quadrascopic-stereo-synchronized-camera-kit
+For Raspberry Pi Bookworm OS on Pi4, so the following:
 
-For Raspberry Pi Bookworm/Bullseye users running on Pi 4, please do the following:
-Bookworm OS on Pi4
-
+### Edit the config
 sudo nano /boot/firmware/config.txt 
 #Find the line: camera_auto_detect=1, update it to:
 camera_auto_detect=0
-dtoverlay=imx219
-#Save and rebootsudo i2cset -y 10 0x0c 0x00
-.
+#Find the line: [all], add the following item under it:
+dtoverlay=ov9281
+#Save and reboot.
 
+### Use libcamera to access the camera
+Step 1. Download the bash scripts
+```bash
+wget -O install_pivariety_pkgs.sh https://github.com/ArduCAM/Arducam-Pivariety-V4L2-Driver/releases/download/install_script/install_pivariety_pkgs.sh
+chmod +x install_pivariety_pkgs.sh
+```
 
+Step 2. Install libcamera
+```bash
+./install_pivariety_pkgs.sh -p libcamera_dev
+```
+Step 3. Install libcamera-apps
+```bash
+./install_pivariety_pkgs.sh -p libcamera_apps
+```
+Step 4. Preview the camera
+```bash
+libcamera-still -t 0
+```
+
+---
 
 ```
 git clone https://github.com/ArduCAM/RaspberryPi.git ~/arducam_setup
