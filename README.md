@@ -6,6 +6,13 @@
 
 ## Full Setup Guide
 
+> Note: MacOS was used to implement this system, but the README is valid for all operating systems
+
+1) [LLM Assistant](https://chatgpt.com/share/686b52ea-7a9c-8010-9c9a-e8f414262bff)
+### Prompts
+Make a troubleshooting entry into section _ of the README, formatted in plain text markdown to document the successful steps we performed, just output that segement
+sudo apt install -y libcap-dev
+
 ### Components:
 1) [Rasberry Pi 4 Model B](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
 2) [OV9281 Monochrome Global Shutter Camera](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/Global-Shutter/1MP-OV9281-OV9282/)
@@ -14,10 +21,11 @@
 ### Resources
 1) [Setup Documentation](https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/quick-start/#access-raspberry-pi-native-camera)
 2) [Video Setup Tutorial](https://www.youtube.com/watch?v=jW4gcla1aOE)
+3) [Kernel Driver](https://blog.arducam.com/faq/kernel-camera-driver/)
 
-### Troubleshooting tips
+#### Further Reading
+4) [Arducam MIPI monochrome global shutter cameras](https://forums.raspberrypi.com/viewtopic.php?t=267563)
 
-- Make sure your privacy and security settings allow network access so you can ssh into the R-Pi from the terminal (can be auto blocked on macOS)
 
 
 ### Repository Setup
@@ -203,63 +211,33 @@ sudo reboot
 
 ## Step 4 – Update OS and Install Dependencies
 
-Update and upgrade the Pi:
+### Update and upgrade the Pi:
 
 ```
 sudo apt update && sudo apt full-upgrade -y
 ```
 
-Install required system packages:
+### Install required system packages:
 
 ```
-sudo apt update
 sudo apt install -y git python3-pip libatlas-base-dev \
-    libopenjp2-7 libtiff-dev \
-    build-essential cmake pkg-config
+    libopenjp2-7 libtiff-dev libcap-dev \
+    build-essential cmake pkg-config \
+    python3-libcamera
 ```
-
-Install Python libraries:
-
-1. Install virtualenv tools if not present
-sudo apt install -y python3-venv python3-full
-
-2. Create a virtual environment (in your project dir)
-python3 -m venv venv
-
-3. Activate it
-source venv/bin/activate
-
-4. Upgrade pip
-pip install --upgrade pip
-
-5. Install your project dependencies
-```bash
-pip install "opencv-python==4.5.5.64" "RPi.GPIO==0.7.1a4" numpy matplotlib
-```
-
-To exit the venv, run:
-
-```bash
-deactivate
-```
-
-> These versions match those used in the original thesis implementation.
-
 ---
 
 ## Step 5 – Install ArduCam QuadCam Driver
 
-For Raspberry Pi Bookworm OS on Pi4, so the following:
-
-### Edit the config
-sudo nano /boot/firmware/config.txt 
-#Find the line: camera_auto_detect=1, update it to:
-camera_auto_detect=0
-#Find the line: [all], add the following item under it:
-dtoverlay=ov9281
-#Save and reboot.
-
 ### Use libcamera to access the camera
+
+> CHECK OS
+```bash
+uname -a
+```
+
+#### The following steps are for Raspberry Pi Bullseye OS 6.1.21 and Later/Bookworm OS
+
 Step 1. Download the bash scripts
 ```bash
 wget -O install_pivariety_pkgs.sh https://github.com/ArduCAM/Arducam-Pivariety-V4L2-Driver/releases/download/install_script/install_pivariety_pkgs.sh
@@ -274,145 +252,394 @@ Step 3. Install libcamera-apps
 ```bash
 ./install_pivariety_pkgs.sh -p libcamera_apps
 ```
-Step 4. Preview the camera
+Step 4. Modify .Config file
+
+#### For Raspberry Pi Bookworm/Bullseye users running on Pi 4
 ```bash
-libcamera-still -t 0
+sudo nano /boot/firmware/config.txt 
+```
+#### Find the line: [all], add the following item under it:
+```bash
+dtoverlay=arducam-pivariety
+```
+#### Modify the 1 to a 0 in
+```bash
+camera_auto_detect=0
+```
+
+### Save and reboot.
+
+Step 5. Use libcamera to access Arducam Pivariety Camera
+```bash
+libcamera-still -t 5000
+```
+- Preview 5 seconds.
+If you don't have a display screen, you can save an image without displaying it. And an image of test.jpg will be saved in the current directory.
+
+```bash
+libcamera-still -t 5000 -n -o test.jpg
 ```
 
 ---
+### Troubleshooting
 
-```
-git clone https://github.com/ArduCAM/RaspberryPi.git ~/arducam_setup
-cd ~/arducam_setup/Multi_Camera_Adapter/Multi_Adapter_Board_4Channel/Legacy/Multi_Camera_Adapter_V2.1_python/
-chmod +x init_camera.sh
-sudo ./init_camera.shsudo nano /boot/firmware/config.txt 
+- **Camera Not Detected**:
+  - Ensure the camera is properly connected.
+  - Verify that the `dtoverlay` line is correctly added to the configuration file.
+  - Check for the presence of `/dev/video0` using:
+    ```bash
+    ls /dev/video*
+    ```
+  - Check Available I2C Buses using:
+    ```bash
+    i2cdetect -l
+    ```
+- **Fix: Missing `arducam-pivariety_mono.json` Tuning File**
+  - Run the following commands to install Arducam's custom version of `libcamera` and the necessary tuning files:
+  ```bash
+  sudo mkdir -p /usr/share/libcamera/ipa/rpi/vc4/
 
-# Optional: test with adapter preview
-python3 previewOpencv.py
-```
 
-After reboot, verify the camera stack:
 
-```
-dmesg | grep camarray
-libcamera-hello -t 2000
-```
+  wget -O install_pivariety_pkgs.sh https://github.com/ArduCAM/Arducam-Pivariety-V4L2-Driver/releases/download/install_script/install_pivariety_pkgs.sh
+  chmod +x install_pivariety_pkgs.sh
+  ./install_pivariety_pkgs.sh -p libcamera_dev
+  ./install_pivariety_pkgs.sh -p libcamera_apps
+  ```
+  - Then verify the tuning file is present:
+  ```bash
+  ls /usr/share/libcamera/ipa/rpi/vc4/arducam-pivariety_mono.json
+  ```
 
-> If the camera stack is not detected, rerun the setup script.
+
+
 
 ---
 
-## Step 6 – Smoke Test and Live Preview
+## Step 6 – Verify Camera Installation and Basic Testing
 
-### Basic Capture Test
+### Check I2C Communication with the Arducam HAT
 
+The Arducam CamArray HAT communicates over I²C to handle camera switching. You can verify it’s detected by scanning for its address (`0x24`) on available I²C buses:
+
+```bash
+for i in {0..22}; do echo "Bus $i"; sudo i2cdetect -y $i | grep 24 && echo "  ✅ Found 0x24" || echo "  ❌ Not on this bus"; done
 ```
+
+> The device should be visible on one or more buses (commonly bus 20 or 21). Seeing `0x24` confirms that the HAT is connected and responding.
+
+### Link the missing arducam-pivariety_mono.json file 
+```bash
+sudo ln -s ov9281_mono.json arducam-pivariety_mono.json
+```
+> This creates a symbolic link that tells libcamera to use the ov9281_mono.json tuning file whenever it looks for arducam-pivariety_mono.json.
+
+### Capture a Test Image with libcamera
+
+Use `libcamera-still` to test image capture from the camera stack:
+
+```bash
+libcamera-still -t 5000 -n -o test.jpg
+```
+
+> This will capture a 4-camera composite image (typically 5120×800 pixels) and save it as `test.jpg`. If the image is saved without errors, your camera pipeline is working correctly.
+
+---
+
+## Step 7 – Python Environment Setup and Initial Capture
+
+
+### Install Python libraries:
+
+1. Install virtualenv tools if not present
+```bash
+sudo apt install -y python3-venv python3-full
+```
+2. Create a virtual environment with system site packages access (in your project dir)
+```bash
+python3 -m venv venv --system-site-packages
+```
+> **Note**: The `--system-site-packages` flag is required to access the system `libcamera` libraries that picamera2 depends on.
+
+3. Activate it
+```bash
+source venv/bin/activate
+```
+4. Upgrade pip
+```bash
+pip install --upgrade pip
+```
+5. Install your project dependencies
+```bash
+pip install "opencv-python==4.5.5.64" "picamera2==0.3.18" "RPi.GPIO==0.7.1a4" numpy matplotlib
+```
+
+To exit the venv, run:
+
+```bash
+deactivate
+```
+
+> These versions match those used in the original thesis implementation.
+
+### To activate Your Virtual Environment
+
+```bash
+# Navigate to project directory
+cd ~/Documents/pi-Aerial-Payload
+
+# Activate virtual environment
+source venv/bin/activate
+```
+
+### Simple Headless Camera Test
+
+Run the simple headless camera test script that doesn't require VNC or GUI:
+
+```bash
+cd RPi_Code
+
+# Run simple camera test (captures 3 test images)
+python3 simple_camera_test.py
+```
+
+> **Note**: This headless script captures 3 test images without requiring a display. Images are saved in a timestamped directory (e.g., `camera_test_20241213_143022/`). Expected image size is 2560x400 pixels (4 cameras combined).
+
+### Alternative: Original Capture Script (Requires VNC)
+
+If you have VNC enabled and want the original capture script with preview:
+
+```bash
+# Only run this if VNC is enabled and connected
 python3 Capture_V3.py
+```
+
+> **Note**: The original script requires VNC connection for GUI preview and will prompt you to press Enter before capturing images.
+
+### Split Images into Individual Cameras
+
+After capturing, split the combined image into individual camera feeds:
+
+```bash
 python3 Split_V3.py
 ```
 
-> Outputs appear in `QuadCam/raw/` and `QuadCam/split/`. Expect four monochrome images.
-
-### Live Preview
-
-```
-python3 LiveCal_V3.py
-```
-
-* Press **Space** to capture a synchronised frame.
-* Requires VNC for GUI-based live viewing.
+> This separates the 2560x400 combined image into four individual 640x400 camera images.
 
 ---
 
-## VNC Configuration (Optional)
+## Step 8 – VNC Configuration (Optional but Recommended)
+
+VNC is required for live preview and calibration GUIs.
 
 ### Enable VNC on Pi
 
-```
+```bash
 sudo raspi-config
-# Interface Options → VNC → Enable
+# Navigate to: Interface Options → VNC → Enable
 sudo reboot
 ```
 
-### On Your Laptop
+### Connect from Your Laptop
 
-1. Install [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/).
-2. Open VNC Viewer and connect to `quadcam.local`.
-3. Log in using your Pi credentials.
+1. Install [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
+2. Connect to `quadcam.local` or your Pi's IP address
+3. Use your Pi credentials (`av` / `quadcam123`)
 
----
-
-## Step 7 – Calibration *(one-time per unit or lens set)*
-
-Run stereo calibration using a 9 × 6 checkerboard (25 mm square size):
-
-```
-python3 Stereo_V4.py --rows 6 --cols 9 --square 25
+```bash
+export QT_QPA_PLATFORM=vnc
+DISPLAY=:1
 ```
 
-> This generates stereo rectification maps saved under `maps/`.
-
----
-
-## Step87 – Post-Processing and Index Generation
-
-Run post-processing on raw captures:
-
-```
-python3 PostProc_V2.py --in raw/ --map maps/ --out calibrated/
-```
-
-Generate NDVI or PRI:
-
-```
-python3 VIGen.py \
-    --nir calibrated/850 \
-    --red calibrated/660 \
-    --out indices/ndvi.png
+#### Run the Script for Live View
+```bash
+# Only run this if VNC is enabled and connected
+python3 Capture_V3.py
 ```
 
 ---
 
-## Step 9 – GPIO Remote Trigger *(Optional)*
+## Step 9 – Stereo Calibration (Required for Stereo Vision)
 
-Run this to listen for GPIO pin 14 triggers (e.g. from a flight controller):
+### Prepare Calibration Images
 
+1. **Print a checkerboard pattern** (recommended: 9×6 squares, 25mm each)
+2. **Capture calibration images** by pointing all cameras at the checkerboard from different angles and distances
+3. **Ensure good coverage** - capture at least 10-15 image sets
+
+### Create Calibration Directory Structure
+
+```bash
+# Create directories for calibration images
+mkdir -p ~/Documents/pi-Aerial-Payload/calibration_images/raw
+mkdir -p ~/Documents/pi-Aerial-Payload/calibration_images/split
+mkdir -p ~/Documents/pi-Aerial-Payload/maps
 ```
-python3 DroneGPIO.py --pin 14 --save flight_captures/
+
+### Capture Calibration Images
+
+```bash
+cd RPi_Code
+
+# Capture multiple sets of calibration images
+python3 Capture_V3.py
 ```
 
-> Captures are synchronised on each **HIGH** signal to GPIO 14.
+### Split Calibration Images
+
+```bash
+python3 Split_V3.py
+```
+
+### Run Stereo Calibration
+
+**Important**: Before running calibration, edit the file paths in `Stereo_V4.py` to match your directory structure:
+
+```bash
+# Edit the script to update paths
+nano Stereo_V4.py
+```
+
+Update the paths in the script from:
+```python
+# Change these lines to match your directory structure
+left_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im1}.png')))
+right_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im2}.png')))
+```
+
+To:
+```python
+left_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/calibration_images/split/*{im1}.png')))
+right_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/calibration_images/split/*{im2}.png')))
+```
+
+Then run the calibration:
+
+```bash
+python3 Stereo_V4.py
+```
+
+> This generates stereo rectification maps saved as XML files in the `maps/` directory.
 
 ---
 
-## File Structure *(to be completed)*
+## Step 10 – Live Preview and Real-time Processing
 
-```
-QuadCam/
-├── 01. Matlab Code/
-├── 02. CAD Files/
-├── 03. RPi Code/
-│   ├── Capture_V3.py
-│   ├── DroneGPIO.py
-│   ├── LiveCal_V3.py
-│   ├── PostProc_V2.py
-│   ├── Split_V3.py
-│   ├── Stereo_V4.py
-│   └── VIGen.py
-├── raw/
-├── split/
-├── calibrated/
-├── maps/
-├── indices/
-└── README.md
+### Configure Live Calibration Paths
+
+Edit `LiveCal_V4.py` to update the hardcoded paths:
+
+```bash
+nano LiveCal_V4.py
 ```
 
+Update the paths in the script to match your directory structure:
+```python
+# Update these paths
+cv_file.open('/home/av/Documents/pi-Aerial-Payload/maps/stereoMap_03.xml', cv2.FileStorage_READ)
+cvFile1.open('/home/av/Documents/pi-Aerial-Payload/maps/stereoMap_12.xml', cv2.FileStorage_READ)
+```
+
+### Run Live Preview
+
+```bash
+python3 LiveCal_V4.py
+```
+
+**Controls:**
+- **'c'** - Capture calibrated frame
+- **'q'** - Quit application
+
+> **Note**: Requires VNC connection for GUI display. The live preview shows rectified stereo pairs.
+
+---
+
+## Step 11 – Post-Processing and Vegetation Index Generation
+
+### Post-Process Captured Images
+
+```bash
+python3 PostProc_V2.py
+```
+
+### Generate Vegetation Indices
+
+```bash
+python3 VIGen.py
+```
+
+> This generates NDVI (Normalized Difference Vegetation Index) from the captured multispectral images.
+
+---
+
+## Step 12 – GPIO Remote Trigger (Optional)
+
+For drone integration, use the GPIO trigger script:
+
+```bash
+python3 DroneGPIO.py
+```
+
+> This script listens for GPIO signals from a flight controller and triggers synchronized captures.
+
+---
+
+## Updated File Structure
+
+```
+pi-Aerial-Payload/
+├── README.md
+├── RPi_Code/
+│   ├── simple_camera_test.py  # Headless camera test script
+│   ├── Capture_V3.py          # Main capture script (requires VNC)
+│   ├── Split_V3.py            # Image splitting utility
+│   ├── Stereo_V4.py           # Stereo calibration
+│   ├── LiveCal_V4.py          # Live preview and calibration
+│   ├── PostProc_V2.py         # Post-processing
+│   ├── VIGen.py               # Vegetation index generation
+│   └── DroneGPIO.py           # GPIO trigger integration
+├── calibration_images/
+│   ├── raw/                   # Raw combined images
+│   └── split/                 # Individual camera images
+├── maps/                      # Stereo calibration maps
+├── results/                   # Processed outputs
+├── venv/                      # Python virtual environment
+├── rpicam-apps_1.7.0-2_arm64.deb
+├── libcamera*.deb             # Camera library packages
+└── install_pivariety_pkgs.sh  # Driver installation script
+```
+
+---
+
+## Important Notes
+
+### Path Configuration
+- **All Python scripts contain hardcoded paths** that need to be updated for your specific setup
+- **Before running any script**, edit the file paths to match your directory structure
+- **Common paths to update**:
+  - `/home/a22498729/Desktop/` → `/home/av/Documents/pi-Aerial-Payload/`
+  - Calibration image directories
+  - Output directories
+
+### Workflow Summary
+1. **Test** → Use `simple_camera_test.py` for headless camera testing
+2. **Capture** → Use `Capture_V3.py` for image acquisition (requires VNC)
+3. **Split** → Use `Split_V3.py` to separate camera feeds  
+4. **Calibrate** → Use `Stereo_V4.py` for stereo calibration
+5. **Live Preview** → Use `LiveCal_V4.py` for real-time processing
+6. **Post-Process** → Use `PostProc_V2.py` and `VIGen.py` for analysis
+
+### Troubleshooting
+- **Camera not found**: Check `/dev/video*` devices exist
+- **GUI not displaying**: Use `simple_camera_test.py` for headless testing, or ensure VNC is enabled and connected
+- **Path errors**: Update hardcoded paths in Python scripts
+- **Calibration fails**: Ensure adequate checkerboard images with good coverage
+- **SSH issues**: Make sure your privacy and security settings allow network access so you can ssh into the R-Pi from the terminal (can be auto blocked on macOS)
 ---
 
 ## Credits
 
 Initial development by **Hannah Page** as part of the **GENG5512 Engineering Research Project (Multispectral Imaging Drone Payload)**.
-
 
 # pi-Aerial-Payload
 
@@ -481,3 +708,7 @@ The specific versions (`opencv-python==4.5.5.64`, `picamera2==0.3.18`, `RPi.GPIO
 ### Project Overview
 
 The QuadCam system is a **stereo vision system for vegetation monitoring** that requires precise camera calibration, real-time processing, and hardware integration - making all these dependencies essential for the system to function properly as a complete multispectral imaging solution.
+
+
+```bash
+```
