@@ -433,9 +433,9 @@ DISPLAY=:0
 ps aux | grep vnc | grep -v grep
 ```
 
-#### Live Preview Solutions
+### Live Preview Solutions
 
-**Option 1: Web-Based Live Preview (Recommended - Works without VNC)**
+#### Option 1: Web-Based Live Preview (Recommended - Works without VNC)
 ```bash
 # Navigate to RPi_Code directory and activate virtual environment
 cd ~/Documents/pi-Aerial-Payload/RPi_Code
@@ -456,7 +456,7 @@ hostname -I
 ```
 
 
-**Option 2: OpenCV GUI Live Preview (Requires VNC to view from laptop)**
+#### Option 2: OpenCV GUI Live Preview (Requires VNC to view from laptop)
 > This option has less latency but can't be viewed from a mobile device
 ```bash
 # Set proper display environment and run OpenCV preview
