@@ -4,7 +4,8 @@ import os
 import glob
 #from fastiecm import fastiecm
 
-directory = r"C:\Users\hanna\OneDrive\Desktop\New folder\Results\Batch3\Split"
+# Updated directory to use correct user directory structure
+directory = "/home/av/Documents/pi-Aerial-Payload/captures/split"
 fastiecm = cv2.COLORMAP_VIRIDIS   
 imagesLeft = sorted(glob.glob(directory+'/*0.png'))
 imagesRight= sorted(glob.glob(directory+'/*3.png'))
@@ -31,11 +32,13 @@ def contrast(im):
     # Clip values to ensure they are within [0, 255]
     out = np.clip(out, 0, 255)
     return out.astype(np.uint8)
+    
 def NDVI(imagesLeft, imagesRight, batch):
     save_image = False
     cv_file = cv2.FileStorage()
-    mapLocation = r"C:\Users\hanna\OneDrive\Desktop\New folder\Working\Maps"
-    cv_file.open(mapLocation+ f"\stereoMap_{batch}.xml", cv2.FileStorage_READ) #contains frame 0 and 3 
+    # Updated map location to use correct user directory
+    mapLocation = "/home/av/Documents/pi-Aerial-Payload/maps"
+    cv_file.open(mapLocation+ f"/stereoMap_{batch}.xml", cv2.FileStorage_READ) #contains frame 0 and 3 
     stereoMap0_x = cv_file.getNode('stereoMap1_x').mat() #frame 0
     stereoMap0_y = cv_file.getNode('stereoMap1_y').mat() 
     stereoMap1_x = cv_file.getNode('stereoMap2_x').mat() #frame 1
@@ -44,6 +47,9 @@ def NDVI(imagesLeft, imagesRight, batch):
         red = cv2.imread(imgLeft)
         nir = cv2.imread(imgRight)
 
+        if red is None or nir is None:
+            print(f"Could not read images: {imgLeft}, {imgRight}")
+            continue
 
         redCal = cv2.remap(red, stereoMap0_x, stereoMap0_y, cv2.INTER_LINEAR)
         nirCal = cv2.remap(nir, stereoMap1_x, stereoMap1_y, cv2.INTER_LINEAR)
@@ -76,18 +82,26 @@ def NDVI(imagesLeft, imagesRight, batch):
         if save_image:
             ndvi_name = f"ColourNDVI{batch}_{i}"
             ndvi = f"NDVI{batch}_{i}"
-            folder = "Results/NDVI/Mount" 
-
+            # Updated folder to use correct user directory
+            folder = "/home/av/Documents/pi-Aerial-Payload/results/ndvi"
+            
+            # Ensure NDVI results directory exists
+            os.makedirs(folder, exist_ok=True)
             
             filepath = os.path.join(folder, ndvi_name + '.png')
             filepath2 = os.path.join(folder, ndvi+ '.png')
-            #cv2.imwrite(filepath,colour_mapped_image)
-            #cv2.imwrite(filepath2, ndvi_uint8)
+            cv2.imwrite(filepath,colour_mapped_image)
+            cv2.imwrite(filepath2, ndvi_uint8)
             print(f"NDVI image {ndvi_name} saved.")
             save_image = False  # Reset the flag after saving the image
 
-NDVI(red_cap, nir_cap, "12")
-NDVI(imagesLeft,imagesRight, "03")
+if len(red_cap) > 0 and len(nir_cap) > 0:
+    print(f"Processing {len(red_cap)} images for NDVI calculation...")
+    NDVI(red_cap, nir_cap, "12")
+    NDVI(imagesLeft,imagesRight, "03")
+else:
+    print("No images found for processing. Please check the captures/split directory.")
+    
 '''
 
 for i, (imgLeft, imgRight) in enumerate(zip(imagesLeft, imagesRight)):

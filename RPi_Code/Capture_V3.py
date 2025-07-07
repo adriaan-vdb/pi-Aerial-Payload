@@ -7,7 +7,7 @@ def picamCapture(batch):
     picam2.configure(preview_config)
     capture_config = picam2.create_still_configuration()
 
-    picam2.start_preview(Preview.OPENCV)
+    picam2.start_preview(Preview.QT)
     picam2.start()
 
     directoryPath = f"/home/av/Documents/pi-Aerial-Payload/captures/Batch{batch}"

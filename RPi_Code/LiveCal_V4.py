@@ -1,5 +1,3 @@
-
-
 #imports
 import time
 startTime = time.time() 
@@ -12,7 +10,7 @@ from LiveNDVI import TotalNDVI
 
 #opening and saving the parameters from the first stereomap:
 cv_file = cv2.FileStorage()
-cv_file.open('/home/a22498729/Desktop/Working/Maps/stereoMap_03.xml', cv2.FileStorage_READ) #contains frame 0 and 3 
+cv_file.open('/home/av/Documents/pi-Aerial-Payload/maps/stereoMap_03.xml', cv2.FileStorage_READ) #contains frame 0 and 3 
 stereoMap0_x = cv_file.getNode('stereoMap1_x').mat() #frame 0
 stereoMap0_y = cv_file.getNode('stereoMap1_y').mat() 
 stereoMap3_x = cv_file.getNode('stereoMap2_x').mat() #frame 1
@@ -27,7 +25,7 @@ flatRoi3 = roi3.flatten()
 left3,top3,right3,bottom3 = [int(value) for value in flatRoi3]
 
 cvFile1 = cv2.FileStorage()
-cvFile1.open('/home/a22498729/Desktop/Working/Maps/stereoMap_12.xml', cv2.FileStorage_READ) #contains frame 0 and 3 
+cvFile1.open('/home/av/Documents/pi-Aerial-Payload/maps/stereoMap_12.xml', cv2.FileStorage_READ) #contains frame 1 and 2
 stereoMap1_x = cvFile1.getNode('stereoMap1_x').mat() #frame 1
 stereoMap1_y = cvFile1.getNode('stereoMap1_y').mat() 
 stereoMap2_x = cvFile1.getNode('stereoMap2_x').mat() #frame 2
@@ -43,8 +41,14 @@ left2,top2,right2,bottom2 = [int(value) for value in flatRoi2]
 #print(top3,bottom3,left3,right3)
 #print(top0,bottom0,left0,right0)
 #print(flatRoi0,flatRoi3,flatRoi1,flatRoi2)
-folder_0 ="/home/a22498729/Desktop/Working/Results"
-folder_1 = "/home/a22498729/Desktop/Working/Results/Raw"
+
+# Updated paths to use correct user directory
+folder_0 = "/home/av/Documents/pi-Aerial-Payload/results"
+folder_1 = "/home/av/Documents/pi-Aerial-Payload/results/raw"
+
+# Ensure result directories exist
+os.makedirs(folder_0, exist_ok=True)
+os.makedirs(folder_1, exist_ok=True)
 
 cap = cv2.VideoCapture(0,cv2.CAP_V4L2)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,2560)
@@ -106,8 +110,13 @@ while(cap.isOpened()):
         print("0",crop0.shape,"3",crop3.shape,"1",crop1.shape,"2",crop2.shape)
         break
     elif key == ord('c'):  # Press 'c' to capture image
-        TotalNDVI(crop0, crop3,image_count) #red then NIR. Need to fix this code to work with frame input
-        TotalNDVI(crop1, crop2,image_count) 
+        # Note: TotalNDVI function from LiveNDVI module may need path updates too
+        try:
+            TotalNDVI(crop0, crop3,image_count) #red then NIR. Need to fix this code to work with frame input
+            TotalNDVI(crop1, crop2,image_count)
+        except Exception as e:
+            print(f"NDVI processing error: {e}")
+            
         filename0 = f"{timestamp}im{image_count}frame0"
         filename1 = f"{timestamp}im{image_count}frame1"
         filename2 = f"{timestamp}im{image_count}frame2"

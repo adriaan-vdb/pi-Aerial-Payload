@@ -6,10 +6,11 @@ import glob
 
 
 fastiecm = cv2.COLORMAP_VIRIDIS   
-imagesLeft = sorted(glob.glob("/home/a22498729/Desktop/Picam/Batch3/Split"+'/*0.png'))
-imagesRight= sorted(glob.glob("/home/a22498729/Desktop/Picam/Batch3/Split"+'/*3.png'))
-red_cap = sorted(glob.glob("/home/a22498729/Desktop/Picam/Batch3/Split"+'/*1.png'))
-nir_cap = sorted(glob.glob("/home/a22498729/Desktop/Picam/Batch3/Split"+'/*2.png'))
+# Updated paths to use correct user directory structure
+imagesLeft = sorted(glob.glob("/home/av/Documents/pi-Aerial-Payload/captures/split"+'/*0.png'))
+imagesRight= sorted(glob.glob("/home/av/Documents/pi-Aerial-Payload/captures/split"+'/*3.png'))
+red_cap = sorted(glob.glob("/home/av/Documents/pi-Aerial-Payload/captures/split"+'/*1.png'))
+nir_cap = sorted(glob.glob("/home/av/Documents/pi-Aerial-Payload/captures/split"+'/*2.png'))
 def new_ndvi(nir,red):
     #needs to do ndvi calc =(nir -r)/(nir+r)
     #nir = img1
@@ -36,6 +37,10 @@ def NDVI(imagesLeft, imagesRight, mount):
     for i, (imgLeft, imgRight) in enumerate(zip(imagesLeft, imagesRight)):
         red = cv2.imread(imgLeft)
         nir = cv2.imread(imgRight)
+
+        if red is None or nir is None:
+            print(f"Could not read images: {imgLeft}, {imgRight}")
+            continue
 
         print(red.shape)
         #redCont = contrast(red)
@@ -64,8 +69,11 @@ def NDVI(imagesLeft, imagesRight, mount):
         if save_image:
             ndvi_name = f"ColourNDVI{mount}_{i}"
             ndvi = f"NDVI{mount}_{i}"
-            folder = "Results/NDVI/Mount" 
-
+            # Updated folder to use correct user directory
+            folder = "/home/av/Documents/pi-Aerial-Payload/results/vegetation_indices"
+            
+            # Ensure vegetation indices directory exists
+            os.makedirs(folder, exist_ok=True)
             
             filepath = os.path.join(folder, ndvi_name + '.png')
             filepath2 = os.path.join(folder, ndvi+ '.png')
@@ -74,9 +82,13 @@ def NDVI(imagesLeft, imagesRight, mount):
             print(f"NDVI image {ndvi_name} saved.")
             save_image = False  # Reset the flag after saving the image
 
-NDVI(red_cap, nir_cap, "cap")
+if len(red_cap) > 0 and len(nir_cap) > 0:
+    print(f"Processing {len(red_cap)} images for vegetation index generation...")
+    NDVI(red_cap, nir_cap, "cap")
+    NDVI(imagesLeft,imagesRight, "Internal")
+else:
+    print("No images found for processing. Please check the captures/split directory.")
 
-NDVI(imagesLeft,imagesRight, "Internal")
 '''
 
 for i, (imgLeft, imgRight) in enumerate(zip(imagesLeft, imagesRight)):
