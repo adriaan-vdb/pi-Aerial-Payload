@@ -5,18 +5,21 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.rcParams.update({'font.size': 20})
 import time
+import os
 # Code Modified from [put github ref here] and [other ref here]
 #
 #
 #
 startTime = time.time()
 PATTERN_SIZE = (5, 3) #bigger box is 10, 7
+
 def StereoMap(im1, im2):
     #load the images in and ensure there are the same number of each side. 
-    left_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im1}.png'))) #nir 
-    right_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im2}.png')))#red
+    # Updated paths to use correct user directory
+    left_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/captures/split/*{im1}.png'))) #nir 
+    right_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/captures/split/*{im2}.png')))#red
     assert len(left_imgs) == len(right_imgs)
-    print(len(left_imgs))
+    print(f"Found {len(left_imgs)} image pairs for calibration")
 
     #set up the criteria + arrays for identifying the points in the real world + their corresponding points in the image
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-3)
@@ -32,6 +35,11 @@ def StereoMap(im1, im2):
         #read the two images one at a time
         left_img = cv2.imread(left_img_path, cv2.IMREAD_GRAYSCALE)
         right_img = cv2.imread(right_img_path, cv2.IMREAD_GRAYSCALE)
+        
+        if left_img is None or right_img is None:
+            print(f"Could not read images: {left_img_path}, {right_img_path}")
+            continue
+            
         img_size = (left_img.shape[1], left_img.shape[0])
         
         #find the chessboard corners in each image
@@ -56,6 +64,11 @@ def StereoMap(im1, im2):
             cv2.imshow('img right', right_img)
             cv2.waitKey(0)
     cv2.destroyAllWindows()'''
+    
+    if len(objpoints) == 0:
+        print("ERROR: No chessboard patterns found! Check your calibration images.")
+        return None, None, None, None
+        
     #takes the above parameters and produces the rotational/translation/distortion matrix between the two cameras
     err, Kl, Dl, Kr, Dr, R, T, E, F = cv2.stereoCalibrate(objpoints, left_pts, right_pts, None, None, None, None, img_size, flags=0)
     #also just to print the required parameters to check
@@ -71,8 +84,14 @@ def StereoMap(im1, im2):
     print(R)
     print('Translation:')
     print(T)'''
-    print(err)
-    folder = f"/home/a22498729/Desktop/Working/Maps/stereoMap_{im1}{im2}.xml"
+    print(f"Stereo calibration error: {err}")
+    
+    # Updated path to use correct user directory and ensure maps directory exists
+    maps_dir = "/home/av/Documents/pi-Aerial-Payload/maps"
+    if not os.path.exists(maps_dir):
+        os.makedirs(maps_dir)
+    folder = f"{maps_dir}/stereoMap_{im1}{im2}.xml"
+    
     #creates Undistortion map that can be used 
     R1, R2, P1, P2, Q, validRoi1, validRoi2 = cv2.stereoRectify(Kl, Dl, Kr, Dr, img_size, R, T)
     xmap1, ymap1 = cv2.initUndistortRectifyMap(Kl, Dl, R1, P1, img_size, cv2.CV_32FC1)
@@ -87,12 +106,18 @@ def StereoMap(im1, im2):
     cv_file.write('Roi1',validRoi1)
     cv_file.write('Roi2',validRoi2)
     cv_file.release()
+    print(f"Stereo map saved to: {folder}")
     return xmap1, ymap1, xmap2, ymap2
 
 def testCalibration(xmap1, ymap1, xmap2, ymap2,im1, im2):
     #test calibration to check whether the image is ok 
-    left_img = cv2.imread(f'/home/a22498729/Desktop/Picam/Split/im0_{im1}.png')
-    right_img = cv2.imread(f'/home/a22498729/Desktop/Picam/Split/im0_{im2}.png')
+    # Updated paths to use correct user directory
+    left_img = cv2.imread(f'/home/av/Documents/pi-Aerial-Payload/captures/split/im0_{im1}.png')
+    right_img = cv2.imread(f'/home/av/Documents/pi-Aerial-Payload/captures/split/im0_{im2}.png')
+
+    if left_img is None or right_img is None:
+        print(f"Could not read test images for cameras {im1} and {im2}")
+        return
 
     left_img_rectified = cv2.remap(left_img, xmap1, ymap1, cv2.INTER_LINEAR)
     right_img_rectified = cv2.remap(right_img, xmap2, ymap2, cv2.INTER_LINEAR)
@@ -110,13 +135,25 @@ def testCalibration(xmap1, ymap1, xmap2, ymap2,im1, im2):
     plt.title('right rectified')
     plt.imshow(right_img_rectified, cmap='gray')
     plt.tight_layout()
-    plt.savefig(f'plot{im1,im2}.png',dpi=300,bbox_inches='tight')
+    
+    # Save plot to results directory
+    results_dir = "/home/av/Documents/pi-Aerial-Payload/results"
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    plot_path = f'{results_dir}/calibration_plot_{im1}_{im2}.png'
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    print(f"Calibration plot saved to: {plot_path}")
     plt.show()
 
+print("Starting stereo calibration...")
 xmap0, ymap0, xmap3, ymap3 = StereoMap(0,3)
-print('map_1_done')
-testCalibration(xmap0, ymap0, xmap3, ymap3, 0,3)
-xmap1, ymap1, xmap2, ymap2 =StereoMap(1,2)
-print('map_2_done')
-print("total time:", (time.time()- startTime))
-testCalibration(xmap1, ymap1, xmap2, ymap2,1,2)
+if xmap0 is not None:
+    print('Stereo map 0-3 completed')
+    testCalibration(xmap0, ymap0, xmap3, ymap3, 0,3)
+
+xmap1, ymap1, xmap2, ymap2 = StereoMap(1,2)
+if xmap1 is not None:
+    print('Stereo map 1-2 completed')
+    testCalibration(xmap1, ymap1, xmap2, ymap2, 1,2)
+
+print("Total calibration time:", (time.time()- startTime), "seconds")

@@ -11,12 +11,12 @@ from PIL import Image
 from datetime import datetime
 
 #splits the image into 4 frames
-#define folders 
-originalFolder = "/home/a22498729/Desktop/Picam/Batch2"
-images =glob.glob(originalFolder+'/*.png')
+#define folders - updated to use correct user directory
+originalFolder = "/home/av/Documents/pi-Aerial-Payload/captures"
+images = glob.glob(originalFolder+'/**/*.png', recursive=True)
 lowContrast = glob.glob("A2/*.png")
 #print(lowContrast)
-#print(images)
+print(f"Found {len(images)} images to process")
 
 def split(image,image_name):
     image = np.array(image,dtype=float)/float(255)
@@ -60,7 +60,11 @@ def contrast(im):
 
 for index, image in enumerate(images):
     img = cv2.imread(image)
-    img0, img1, img2, img3 =split(img, 'split')
+    if img is None:
+        print(f"Could not read image: {image}")
+        continue
+        
+    img0, img1, img2, img3 = split(img, 'split')
     #img2 = contrast(img2)
     #img0 = contrast(img0)
     for i in range(4):
@@ -68,7 +72,9 @@ for index, image in enumerate(images):
         #timestamp = datetime.now().strftime("%H-%M-%S")
         filename = f"im{index}_{i}"
         #cv2.imshow(filename,img)
-        directoryPath =  f"/home/a22498729/Desktop/Picam/Batch2/Split"
+        
+        # Updated directory path to use correct user directory
+        directoryPath = "/home/av/Documents/pi-Aerial-Payload/captures/split"
         if not os.path.exists(directoryPath):
             os.makedirs(directoryPath)
         #cv2.waitKey(0)
@@ -76,3 +82,5 @@ for index, image in enumerate(images):
         cv2.imwrite(filepath,255*img) #multiply by 255 to get the pixel values back to where the cv2.imwrite can recognize them,,
         #print(img.shape)  
     #cv2.destroyAllWindows()
+
+print("Image splitting completed!")
