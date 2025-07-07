@@ -161,7 +161,15 @@ CMD+SHIFT+P
 > PI-AERIAL-PAYLOAD
 
 ```bash
-git remote add origin <>
+git remote remove origin
+git remote add origin https://github.com/adriaan-vdb/pi-Aerial-Payload.git
+```
+#### To commit to github
+```bash
+git pull origin main
+git add .
+git commit -m "Updates on R-Pi"
+git push origin main
 ```
 
 

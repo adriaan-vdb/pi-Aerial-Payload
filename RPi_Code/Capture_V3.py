@@ -7,15 +7,15 @@ def picamCapture(batch):
     picam2.configure(preview_config)
     capture_config = picam2.create_still_configuration()
 
-    picam2.start_preview(Preview.QTGL)
+    picam2.start_preview(Preview.QT)
     picam2.start()
 
-    directoryPath =  f"/home/a22498729/Desktop/Picam/Batch{batch}"
+    directoryPath = f"/home/av/Documents/pi-Aerial-Payload/captures/Batch{batch}"
     if not os.path.exists(directoryPath):
         os.makedirs(directoryPath)
     '''if  os.path.exists(directoryPath):
         i = i+1
-        directoryPath = f"/home/a22498729/Desktop/Picam/Batch{i}"
+        directoryPath = f"/home/av/Documents/pi-Aerial-Payload/captures/Batch{i}"
         os.makedirs(directoryPath)'''
 
     #picam2.set_controls({"ExposureTime":50000, "AnalogueGain" :0.7})
