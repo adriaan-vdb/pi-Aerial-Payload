@@ -30,6 +30,13 @@ BRIGHTNESS_COMPENSATION = {
     3: {"exposure_multiplier": 1.2, "gain_multiplier": 1.1}    # Second darkest
 }
 
+# Global camera settings
+CAMERA_SETTINGS = {
+    "exposure_time": 10000,    # 5ms exposure time
+    "analogue_gain": 1.5,     # Unity gain
+    "contrast": 1.2           # Default contrast
+}
+
 app = Flask(__name__)
 
 class EnhancedQuadCamStreamer:
@@ -47,41 +54,84 @@ class EnhancedQuadCamStreamer:
         self.setup_camera()
     
     def setup_camera(self):
-        """Initialize the camera with fixed exposure settings"""
+        """Initialize the camera with fixed exposure and contrast settings"""
         try:
             self.camera = Picamera2()
             
-            # Configure for live preview with manual exposure control
+            # OV9281 optimized manual exposure and contrast settings
+            # Safe exposure range: 100μs - 100,000μs (0.1ms - 100ms)
+            basic_controls = {
+                "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                "Contrast": CAMERA_SETTINGS["contrast"]
+            }
+            
+            # Try to add optional controls if available
+            try:
+                # Check what controls are available
+                camera_controls = self.camera.camera_controls
+                if "AeEnable" in camera_controls:
+                    basic_controls["AeEnable"] = False
+                if "AwbEnable" in camera_controls:
+                    basic_controls["AwbEnable"] = False
+                print(f"Available camera controls: {list(camera_controls.keys())}")
+            except Exception as e:
+                print(f"Could not check camera controls: {e}")
+            
+            # Configure for live preview with manual exposure and contrast control
             preview_config = self.camera.create_preview_configuration(
                 main={"size": (1280, 200)},  # Reduced resolution for web streaming
                 lores={"size": (640, 100)},   # Even smaller for display
-                controls={
-                    "ExposureTime": 20000,  # Fixed exposure time (microseconds)
-                    "AnalogueGain": 1.0,    # Fixed gain
-                    "AeEnable": False,      # Disable auto exposure
-                    "AwbEnable": False      # Disable auto white balance for consistency
-                }
+                controls=basic_controls
             )
             self.camera.configure(preview_config)
             
             # Create capture configuration (full resolution)
             self.capture_config = self.camera.create_still_configuration(
                 main={"size": (2560, 400)},
-                controls={
-                    "ExposureTime": 20000,
-                    "AnalogueGain": 1.0,
-                    "AeEnable": False,
-                    "AwbEnable": False
-                }
+                controls=basic_controls
             )
             
             self.camera.start()
+            
+            # Apply controls after starting
+            self.camera.set_controls(basic_controls)
+            
             self.is_streaming = True
-            print("✅ Camera initialized successfully with fixed exposure settings")
+            print("Camera initialized successfully with fixed exposure and contrast settings")
             
         except Exception as e:
-            print(f"❌ Error initializing camera: {e}")
+            print(f"Error initializing camera: {e}")
             self.is_streaming = False
+    
+    def update_camera_controls(self):
+        """Update camera controls with current settings"""
+        if not self.camera:
+            return False
+        
+        try:
+            controls = {
+                "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                "Contrast": CAMERA_SETTINGS["contrast"]
+            }
+            
+            # Add optional controls if available
+            try:
+                camera_controls = self.camera.camera_controls
+                if "AeEnable" in camera_controls:
+                    controls["AeEnable"] = False
+                if "AwbEnable" in camera_controls:
+                    controls["AwbEnable"] = False
+            except:
+                pass
+            
+            self.camera.set_controls(controls)
+            return True
+            
+        except Exception as e:
+            print(f"Error updating camera controls: {e}")
+            return False
     
     def apply_brightness_compensation(self, frame):
         """Apply brightness compensation to individual camera regions"""
@@ -152,11 +202,7 @@ class EnhancedQuadCamStreamer:
                 x_end = (i + 1) * camera_width
                 camera_frame = frame[0:camera_height, x_start:x_end]
                 
-                # Add camera label with compensation info
-                comp_factor = BRIGHTNESS_COMPENSATION[i]["exposure_multiplier"]
-                label = f"{CAMERA_LABELS[i]} (×{comp_factor:.2f})"
-                cv2.putText(camera_frame, label, 
-                           (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, UI_COLOR, 2)
+                # Camera labels and overlays removed for clean view
                 
                 cameras.append(camera_frame)
             
@@ -175,7 +221,7 @@ class EnhancedQuadCamStreamer:
             return grid_frame
             
         except Exception as e:
-            print(f"❌ Error capturing frame: {e}")
+            print(f"Error capturing frame: {e}")
             return None
     
     def capture_image(self):
@@ -187,7 +233,7 @@ class EnhancedQuadCamStreamer:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{self.capture_dir}/capture_{timestamp}.png"
             
-            print("📸 Capturing full resolution image with brightness compensation...")
+            print("Capturing full resolution image with brightness compensation...")
             
             # Stop camera to allow configuration change
             self.camera.stop()
@@ -195,6 +241,9 @@ class EnhancedQuadCamStreamer:
             # Configure capture mode for full resolution
             self.camera.configure(self.capture_config)
             self.camera.start()
+            
+            # Apply current controls
+            self.update_camera_controls()
             
             # Wait for camera to stabilize
             time.sleep(1)
@@ -215,38 +264,64 @@ class EnhancedQuadCamStreamer:
             
             # Switch back to preview configuration
             self.camera.stop()
+            
+            # Use same OV9281 optimized controls as setup
+            basic_controls = {
+                "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                "Contrast": CAMERA_SETTINGS["contrast"]
+            }
+            try:
+                camera_controls = self.camera.camera_controls
+                if "AeEnable" in camera_controls:
+                    basic_controls["AeEnable"] = False
+                if "AwbEnable" in camera_controls:
+                    basic_controls["AwbEnable"] = False
+            except:
+                pass
+                
             preview_config = self.camera.create_preview_configuration(
                 main={"size": (1280, 200)},
                 lores={"size": (640, 100)},
-                controls={
-                    "ExposureTime": 20000,
-                    "AnalogueGain": 1.0,
-                    "AeEnable": False,
-                    "AwbEnable": False
-                }
+                controls=basic_controls
             )
             self.camera.configure(preview_config)
             self.camera.start()
             
-            print(f"✅ Brightness-compensated capture complete: {filename}")
+            # Apply controls after starting
+            self.camera.set_controls(basic_controls)
+            
+            print(f"Brightness-compensated capture complete: {filename}")
             return True, f"Captured: {filename} (Full resolution 2560x400 with brightness compensation)"
             
         except Exception as e:
             # Ensure we're back in preview mode
             try:
                 self.camera.stop()
+                
+                # Use OV9281 optimized controls for error recovery
+                basic_controls = {
+                    "ExposureTime": CAMERA_SETTINGS["exposure_time"],
+                    "AnalogueGain": CAMERA_SETTINGS["analogue_gain"],
+                    "Contrast": CAMERA_SETTINGS["contrast"]
+                }
+                try:
+                    camera_controls = self.camera.camera_controls
+                    if "AeEnable" in camera_controls:
+                        basic_controls["AeEnable"] = False
+                    if "AwbEnable" in camera_controls:
+                        basic_controls["AwbEnable"] = False
+                except:
+                    pass
+                    
                 preview_config = self.camera.create_preview_configuration(
                     main={"size": (1280, 200)},
                     lores={"size": (640, 100)},
-                    controls={
-                        "ExposureTime": 20000,
-                        "AnalogueGain": 1.0,
-                        "AeEnable": False,
-                        "AwbEnable": False
-                    }
+                    controls=basic_controls
                 )
                 self.camera.configure(preview_config)
                 self.camera.start()
+                self.camera.set_controls(basic_controls)
             except:
                 pass
             return False, f"Error capturing image: {e}"
@@ -255,11 +330,23 @@ class EnhancedQuadCamStreamer:
         """Get current brightness compensation settings"""
         return BRIGHTNESS_COMPENSATION
     
+    def get_camera_settings(self):
+        """Get current camera settings"""
+        return CAMERA_SETTINGS
+    
     def update_brightness_setting(self, camera_id, setting_type, value):
         """Update brightness compensation for a specific camera"""
         if 0 <= camera_id <= 3 and setting_type in ["exposure_multiplier", "gain_multiplier"]:
             BRIGHTNESS_COMPENSATION[camera_id][setting_type] = value
             return True
+        return False
+    
+    def update_camera_setting(self, setting_type, value):
+        """Update global camera settings (affects all cameras)"""
+        if setting_type in ["exposure_time", "analogue_gain", "contrast"]:
+            CAMERA_SETTINGS[setting_type] = value
+            success = self.update_camera_controls()
+            return success
         return False
     
     def toggle_brightness_compensation(self):
@@ -339,38 +426,48 @@ def index():
             button:hover { 
                 background-color: #45a049; 
             }
-            .brightness-control {
+            .settings-section {
                 background-color: #f8f9fa;
                 padding: 15px;
                 border-radius: 5px;
                 margin: 20px 0;
             }
-            .brightness-control h3 {
+            .settings-section h3 {
                 margin-top: 0;
                 color: #333;
             }
-            .camera-controls {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 10px;
-                margin: 10px 0;
+            .global-controls {
+                background-color: #e8f4f8;
+                padding: 15px;
+                border-radius: 5px;
+                margin: 20px 0;
             }
-            .camera-control {
+            .global-controls h3 {
+                margin-top: 0;
+                color: #333;
+            }
+            .control-group {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
+                margin: 15px 0;
+            }
+            .control-item {
                 background-color: white;
-                padding: 10px;
+                padding: 15px;
                 border-radius: 5px;
                 border: 1px solid #ddd;
             }
-            .camera-control h4 {
+            .control-item h4 {
                 margin: 0 0 10px 0;
                 color: #555;
             }
             .slider-container {
-                margin: 5px 0;
+                margin: 10px 0;
             }
             .slider-container label {
                 display: block;
-                font-size: 12px;
+                font-size: 14px;
                 color: #666;
                 margin-bottom: 5px;
             }
@@ -413,6 +510,10 @@ def index():
                 border: 2px solid #ddd; 
                 border-radius: 5px; 
             }
+            .value-display {
+                font-weight: bold;
+                color: #333;
+            }
         </style>
     </head>
     <body>
@@ -423,44 +524,74 @@ def index():
             </div>
             
             <div class="controls">
-                <button onclick="captureImage()">📸 Capture Image</button>
-                <button onclick="refreshFeed()">🔄 Refresh Feed</button>
-                <button onclick="toggleBrightnessCompensation()">💡 Toggle Brightness Compensation</button>
-                <button onclick="resetBrightnessSettings()">🔧 Reset Brightness Settings</button>
+                <button onclick="captureImage()">Capture Image</button>
+                <button onclick="refreshFeed()">Refresh Feed</button>
+                <button onclick="toggleBrightnessCompensation()">Toggle Brightness Compensation</button>
+                <button onclick="resetAllSettings()">Reset All Settings</button>
             </div>
             
-            <div class="brightness-control">
-                <h3>🎛️ Brightness Compensation Controls</h3>
+            <div class="global-controls">
+                <h3>Global Camera Settings (All Cameras)</h3>
+                <div class="control-group">
+                                         <div class="control-item">
+                         <h4>Exposure Time</h4>
+                         <div class="slider-container">
+                             <label>Exposure: <span id="exposure-value" class="value-display">10000</span> μs</label>
+                             <input type="range" min="100" max="100000" step="100" value="10000" 
+                                    class="slider" id="exposure-slider" onchange="updateCameraSetting('exposure_time', parseInt(this.value))">
+                         </div>
+                     </div>
+                     <div class="control-item">
+                         <h4>Analogue Gain</h4>
+                         <div class="slider-container">
+                             <label>Gain: <span id="gain-value" class="value-display">1.5</span></label>
+                             <input type="range" min="1.0" max="16.0" step="0.25" value="1.5" 
+                                    class="slider" id="gain-slider" onchange="updateCameraSetting('analogue_gain', parseFloat(this.value))">
+                         </div>
+                     </div>
+                     <div class="control-item">
+                         <h4>Contrast</h4>
+                         <div class="slider-container">
+                             <label>Contrast: <span id="contrast-value" class="value-display">1.2</span></label>
+                             <input type="range" min="0.0" max="10.0" step="0.25" value="1.2" 
+                                    class="slider" id="contrast-slider" onchange="updateCameraSetting('contrast', parseFloat(this.value))">
+                         </div>
+                     </div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>Individual Camera Brightness Compensation</h3>
                 <p>Adjust individual camera brightness to compensate for differences.</p>
-                <div class="camera-controls">
-                    <div class="camera-control">
-                        <h4>📷 Camera 0</h4>
+                <div class="control-group">
+                    <div class="control-item">
+                        <h4>Camera 0</h4>
                         <div class="slider-container">
-                            <label>Exposure Multiplier: <span id="cam0-exp-value">1.0</span></label>
+                            <label>Exposure Multiplier: <span id="cam0-exp-value" class="value-display">1.0</span></label>
                             <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" 
                                    class="slider" id="cam0-exp" onchange="updateBrightness(0, 'exposure_multiplier', this.value)">
                         </div>
                     </div>
-                    <div class="camera-control">
-                        <h4>📷 Camera 1</h4>
+                    <div class="control-item">
+                        <h4>Camera 1</h4>
                         <div class="slider-container">
-                            <label>Exposure Multiplier: <span id="cam1-exp-value">0.8</span></label>
+                            <label>Exposure Multiplier: <span id="cam1-exp-value" class="value-display">0.8</span></label>
                             <input type="range" min="0.5" max="2.0" step="0.1" value="0.8" 
                                    class="slider" id="cam1-exp" onchange="updateBrightness(1, 'exposure_multiplier', this.value)">
                         </div>
                     </div>
-                    <div class="camera-control">
-                        <h4>📷 Camera 2</h4>
+                    <div class="control-item">
+                        <h4>Camera 2</h4>
                         <div class="slider-container">
-                            <label>Exposure Multiplier: <span id="cam2-exp-value">1.4</span></label>
+                            <label>Exposure Multiplier: <span id="cam2-exp-value" class="value-display">1.4</span></label>
                             <input type="range" min="0.5" max="2.0" step="0.1" value="1.4" 
                                    class="slider" id="cam2-exp" onchange="updateBrightness(2, 'exposure_multiplier', this.value)">
                         </div>
                     </div>
-                    <div class="camera-control">
-                        <h4>📷 Camera 3</h4>
+                    <div class="control-item">
+                        <h4>Camera 3</h4>
                         <div class="slider-container">
-                            <label>Exposure Multiplier: <span id="cam3-exp-value">1.2</span></label>
+                            <label>Exposure Multiplier: <span id="cam3-exp-value" class="value-display">1.2</span></label>
                             <input type="range" min="0.5" max="2.0" step="0.1" value="1.2" 
                                    class="slider" id="cam3-exp" onchange="updateBrightness(3, 'exposure_multiplier', this.value)">
                         </div>
@@ -548,14 +679,56 @@ def index():
                 });
             }
             
-            function resetBrightnessSettings() {
-                // Reset to default values
+            function updateCameraSetting(settingType, value) {
+                fetch('/update_camera_setting', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        setting_type: settingType,
+                        value: value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the display value
+                        if (settingType === 'exposure_time') {
+                            document.getElementById('exposure-value').textContent = value;
+                        } else if (settingType === 'analogue_gain') {
+                            document.getElementById('gain-value').textContent = value;
+                        } else if (settingType === 'contrast') {
+                            document.getElementById('contrast-value').textContent = value;
+                        }
+                        showStatus(`Updated ${settingType} to ${value}`, 'success');
+                    } else {
+                        showStatus(`Failed to update ${settingType}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatus(`Error updating ${settingType}`, 'error');
+                });
+            }
+            
+            function resetAllSettings() {
+                // Reset global settings
+                document.getElementById('exposure-slider').value = 10000;
+                document.getElementById('gain-slider').value = 1.5;
+                document.getElementById('contrast-slider').value = 1.2;
+                updateCameraSetting('exposure_time', 10000);
+                updateCameraSetting('analogue_gain', 1.5);
+                updateCameraSetting('contrast', 1.2);
+                
+                // Reset brightness compensation
                 const defaults = {0: 1.0, 1: 0.8, 2: 1.4, 3: 1.2};
                 for (let i = 0; i < 4; i++) {
                     document.getElementById(`cam${i}-exp`).value = defaults[i];
                     updateBrightness(i, 'exposure_multiplier', defaults[i]);
                 }
-                showStatus('Brightness settings reset to defaults', 'success');
+                
+                showStatus('All settings reset to defaults', 'success');
             }
             
             function showStatus(message, type) {
@@ -610,7 +783,8 @@ def status():
     return jsonify({
         'capture_count': camera_streamer.capture_count,
         'brightness_compensation_enabled': camera_streamer.brightness_compensation_enabled,
-        'brightness_settings': camera_streamer.get_brightness_settings()
+        'brightness_settings': camera_streamer.get_brightness_settings(),
+        'camera_settings': camera_streamer.get_camera_settings()
     })
 
 @app.route('/toggle_brightness_compensation', methods=['POST'])
@@ -637,28 +811,41 @@ def update_brightness():
         'message': f"Updated camera {camera_id} {setting_type} to {value}" if success else "Failed to update setting"
     })
 
+@app.route('/update_camera_setting', methods=['POST'])
+def update_camera_setting():
+    """Update global camera settings"""
+    data = request.json
+    setting_type = data.get('setting_type')
+    value = data.get('value')
+    
+    success = camera_streamer.update_camera_setting(setting_type, value)
+    return jsonify({
+        'success': success,
+        'message': f"Updated {setting_type} to {value}" if success else f"Failed to update {setting_type}"
+    })
+
 if __name__ == '__main__':
     try:
-        print("🚀 Starting Enhanced QuadCam Web Preview...")
-        print("🔧 Camera initializing with brightness compensation...")
+        print("Starting Enhanced QuadCam Web Preview...")
+        print("Camera initializing with brightness compensation and contrast control...")
         
         if camera_streamer.is_streaming:
-            print("✅ Camera initialized successfully")
-            print("💡 Brightness compensation enabled")
-            print("🌐 Starting web server...")
-            print("📱 Access the enhanced live preview at: http://your-pi-ip:5000")
-            print("🖥️  Or locally at: http://localhost:5000")
-            print("⚡ Press Ctrl+C to stop")
+            print("Camera initialized successfully")
+            print("Brightness compensation and contrast control enabled")
+            print("Starting web server...")
+            print("Access the enhanced live preview at: http://your-pi-ip:5000")
+            print("Or locally at: http://localhost:5000")
+            print("Press Ctrl+C to stop")
             
             # Start Flask app
             app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
         else:
-            print("❌ Failed to initialize camera")
+            print("Failed to initialize camera")
             
     except KeyboardInterrupt:
-        print("\n🛑 Stopping camera...")
+        print("\nStopping camera...")
         camera_streamer.stop_camera()
-        print("✅ Camera stopped")
+        print("Camera stopped")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         camera_streamer.stop_camera() 

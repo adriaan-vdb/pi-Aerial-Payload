@@ -359,7 +359,7 @@ def index():
             <div class="controls">
                 <button onclick="captureImage()">Capture Image</button>
                 <button onclick="refreshFeed()">Refresh Feed</button>
-                <button onclick="toggleFullscreen()">📱 Fullscreen</button>
+                <button onclick="toggleFullscreen()">Fullscreen</button>
             </div>
             <div id="status" class="status" style="display: none;"></div>
             

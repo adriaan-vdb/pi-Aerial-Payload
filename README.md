@@ -445,6 +445,11 @@ source ../venv/bin/activate
 python3 WebLivePreview.py
 ```
 
+The following script allows for individual brightness adjustment
+```bash
+python3 WebLivePreview_Enhanced.py
+```
+
 Then open your web browser and go to:
 - **From your Phone:** `http://192.168.0.157:5000` (or your Pi's IP address)
 - **From the Pi locally:** `http://localhost:5000`
@@ -454,7 +459,6 @@ Then open your web browser and go to:
 ```bash
 hostname -I
 ```
-
 
 #### Option 2: OpenCV GUI Live Preview (Requires VNC to view from laptop)
 > This option has less latency but can't be viewed from a mobile device
@@ -508,28 +512,6 @@ python3 Split_V3.py
 ```
 
 ### Run Stereo Calibration
-
-**Important**: Before running calibration, edit the file paths in `Stereo_V4.py` to match your directory structure:
-
-```bash
-# Edit the script to update paths
-nano Stereo_V4.py
-```
-
-Update the paths in the script from:
-```python
-# Change these lines to match your directory structure
-left_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im1}.png')))
-right_imgs = list(sorted(glob.glob(f'/home/a22498729/Desktop/Picam/Batch2/Split/*{im2}.png')))
-```
-
-To:
-```python
-left_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/calibration_images/split/*{im1}.png')))
-right_imgs = list(sorted(glob.glob(f'/home/av/Documents/pi-Aerial-Payload/calibration_images/split/*{im2}.png')))
-```
-
-Then run the calibration:
 
 ```bash
 python3 Stereo_V4.py
