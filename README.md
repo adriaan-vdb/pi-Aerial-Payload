@@ -9,8 +9,11 @@
 ### Components:
 1) [Rasberry Pi 4 Model B](https://www.raspberrypi.com/products/raspberry-pi-4-model-b/)
 2) [OV9281 Monochrome Global Shutter Camera](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/Global-Shutter/1MP-OV9281-OV9282/)
-3) [Multi Camera HAT](https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/quick-start/#access-raspberry-pi-native-camera)
-4) [Entire Setup](https://www.arducam.com/arducam-1mp4-quadrascopic-camera-bundle-kit-for-raspberry-pi-nvidia-jetson-nano-xavier-nx-four-ov9281-global-shutter-monochrome-camera-modules-and-camarray-camera-hat.html)
+4) [Multi Camera HAT ](https://www.arducam.com/arducam-1mp4-quadrascopic-camera-bundle-kit-for-raspberry-pi-nvidia-jetson-nano-xavier-nx-four-ov9281-global-shutter-monochrome-camera-modules-and-camarray-camera-hat.html)
+
+### Resources
+1) [Setup Documentation](https://docs.arducam.com/Raspberry-Pi-Camera/Multi-Camera-CamArray/quick-start/#access-raspberry-pi-native-camera)
+2) [Video Setup Tutorial](https://www.youtube.com/watch?v=jW4gcla1aOE)
 
 ### Troubleshooting tips
 
@@ -21,7 +24,7 @@
 
 ---
 
-## Step 1 – Flash Raspberry Pi OS to SD Card
+## Step 1 – Flash Raspberry Pi OS to SD Card
 
 1. Download and install [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
 2. Insert your micro-SD card using a card reader.
@@ -30,14 +33,14 @@
    * **Device:** Raspberry Pi 4
    * **OS:** Raspberry Pi OS (64-bit) (Debian Bookworm)
    * **Storage:** Your SD card
-4. When prompted with **“Would you like to apply OS customisation settings?”**, click **Edit Settings** and configure the following:
+4. When prompted with "Would you like to apply OS customisation settings?", click **Edit Settings** and configure the following:
 
 #### 1. Set hostname
 * **quadcam** 
 
 #### 2. Set Username and Password
 
-* [x] Enable “Set username and password”
+* [x] Enable "Set username and password"
 
   * **Username:** `av`
   * **Password:** `quadcam123`
@@ -50,7 +53,7 @@
 
 #### 3. Configure Wireless LAN *(skip if using Ethernet)*
 
-* [x] Enable “Configure wireless LAN”
+* [x] Enable "Configure wireless LAN"
 
   * **SSID:** `YourNetworkName`
   * **Password:** `YourWiFiPassword`
@@ -58,24 +61,27 @@
 
 #### 4. Set Locale Settings
 
-* [x] Enable “Set locale settings”
+* [x] Enable "Set locale settings"
 
   * **Time zone:** `Australia/Perth`
   * **Keyboard layout:** `us`
-
 
 
 Click **Save**, then **Write** the image. Once complete, eject the SD card and insert it into your Raspberry Pi.
 
 ---
 
-## Step 2 – First Boot and Basic Pi Setup
+## Step 2 – First Boot and Basic Pi Setup
 
 1. Insert the flashed SD card into the Pi and power it up.
 
 2. Wait ≈ 45 seconds for the Pi to boot.
+Run on PC to remove old key entry when re flashing.
+```bash
+ssh-keygen -R 192.168.0.157
+```
 
-3. On your laptop, find the Pi’s IP address:
+3. On your laptop, find the Pi's IP address:
 
    ```
     ping quadcam.local
@@ -137,7 +143,7 @@ ping <laptop-ip>
 Extensions (⇧⌘X) → search "Remote - SSH" → Install
 - Open Command Palette (⇧⌘P) → Remote-SSH: Connect to Host…
 - Select your Pi IP (might need to add it to the config) 
-- You’ll be connected to your Pi and can edit code directly in the remote environment.
+- You'll be connected to your Pi and can edit code directly in the remote environment.
 
 !Important
 Clone the repository:
@@ -149,8 +155,17 @@ git clone https://github.com/adriaan-vdb/pi-Aerial-Payload.git
 cd pi-Aerial-Payload
 ```
 
+### Link to the GITHUB repo for syncing
+CMD+SHIFT+P 
+> File: Open Folder
+> PI-AERIAL-PAYLOAD
 
-## Step 5 - Run Configuration
+```bash
+git remote add origin <>
+```
+
+
+## Step 3 - Run Configuration
 
 Open the Raspberry Pi configuration utility:
 
@@ -178,7 +193,7 @@ sudo reboot
 
 ---
 
-## Step 3 – Update OS and Install Dependencies
+## Step 4 – Update OS and Install Dependencies
 
 Update and upgrade the Pi:
 
@@ -191,10 +206,8 @@ Install required system packages:
 ```
 sudo apt update
 sudo apt install -y git python3-pip libatlas-base-dev \
-    libopenjp2-7 libtiff-dev libcamera-apps \
+    libopenjp2-7 libtiff-dev \
     build-essential cmake pkg-config
-sudo apt install libcamera-dev
-sudo apt install -y libcap-dev
 ```
 
 Install Python libraries:
@@ -213,8 +226,7 @@ pip install --upgrade pip
 
 5. Install your project dependencies
 ```bash
-pip install "opencv-python==4.5.5.64" "picamera2==0.3.18" \
-            "RPi.GPIO==0.7.1a4" numpy matplotlib
+pip install "opencv-python==4.5.5.64" "RPi.GPIO==0.7.1a4" numpy matplotlib
 ```
 
 To exit the venv, run:
@@ -227,7 +239,7 @@ deactivate
 
 ---
 
-## Step 4 – Install ArduCam QuadCam Driver
+## Step 5 – Install ArduCam QuadCam Driver
 
 For Raspberry Pi Bookworm OS on Pi4, so the following:
 
@@ -282,7 +294,7 @@ libcamera-hello -t 2000
 
 ---
 
-## Step 5 – Smoke Test and Live Preview
+## Step 6 – Smoke Test and Live Preview
 
 ### Basic Capture Test
 
@@ -322,7 +334,7 @@ sudo reboot
 
 ---
 
-## Step 6 – Calibration *(one-time per unit or lens set)*
+## Step 7 – Calibration *(one-time per unit or lens set)*
 
 Run stereo calibration using a 9 × 6 checkerboard (25 mm square size):
 
@@ -334,7 +346,7 @@ python3 Stereo_V4.py --rows 6 --cols 9 --square 25
 
 ---
 
-## Step 7 – Post-Processing and Index Generation
+## Step87 – Post-Processing and Index Generation
 
 Run post-processing on raw captures:
 
@@ -353,7 +365,7 @@ python3 VIGen.py \
 
 ---
 
-## Step 8 – GPIO Remote Trigger *(Optional)*
+## Step 9 – GPIO Remote Trigger *(Optional)*
 
 Run this to listen for GPIO pin 14 triggers (e.g. from a flight controller):
 
@@ -395,3 +407,69 @@ Initial development by **Hannah Page** as part of the **GENG5512 Engineering Res
 
 
 # pi-Aerial-Payload
+
+---
+
+## Dependency Explanations
+
+This section explains why each dependency is required for the QuadCam stereo vision system for vegetation monitoring.
+
+### System Package Dependencies
+
+#### Essential for Core Functionality
+- **`git`** - Required for cloning the repository and version control
+- **`python3-pip`** - Package installer for Python libraries
+- **`python3-venv`** & **`python3-full`** - Virtual environment support for isolated Python dependencies
+
+#### OpenCV Dependencies
+- **`libatlas-base-dev`** - Linear algebra library that OpenCV uses for optimized mathematical operations (matrix operations, image processing)
+- **`libopenjp2-7`** - JPEG 2000 codec support for OpenCV image reading/writing
+- **`libtiff-dev`** - TIFF image format support for OpenCV
+- **`build-essential`** - Contains GCC compiler and build tools needed to compile OpenCV from source
+- **`cmake`** - Build system for compiling OpenCV extensions
+- **`pkg-config`** - Helps find library dependencies during compilation
+
+#### Hardware Interface
+- **`libcap-dev`** - Required for camera capture permissions and low-level camera access
+
+### Python Library Dependencies
+
+#### Core Image Processing
+- **`opencv-python==4.5.5.64`** - Used extensively in:
+  - `Stereo_V4.py` - Stereo camera calibration, chessboard detection, image rectification
+  - `LiveCal_V4.py` - Real-time stereo mapping and camera feed processing
+  - `PostProc_V2.py` - NDVI calculation and image post-processing
+  - `Split_V3.py` - Image splitting and manipulation
+  - `VIGen.py` - Vegetation index generation and color mapping
+
+#### Camera Control
+- **`picamera2==0.3.18`** - Used in:
+  - `Capture_V3.py` - Main camera capture functionality
+  - `DroneGPIO.py` - GPIO-triggered camera capture
+  - `LiveCal_V4.py` - Camera interface integration
+
+#### Hardware Control
+- **`RPi.GPIO==0.7.1a4`** - Used in:
+  - `DroneGPIO.py` - GPIO pin control for drone trigger integration
+
+#### Mathematical Operations
+- **`numpy`** - Used in:
+  - `Stereo_V4.py` - Matrix operations for camera calibration
+  - `PostProc_V2.py` - NDVI calculations and image array processing
+  - `Split_V3.py` - Image array manipulation
+  - `VIGen.py` - Numerical operations for vegetation indices
+
+#### Visualization
+- **`matplotlib`** - Used in:
+  - `Stereo_V4.py` - Plotting calibration results and stereo pair comparisons
+
+### Why These Specific Versions Matter
+
+The specific versions (`opencv-python==4.5.5.64`, `picamera2==0.3.18`, `RPi.GPIO==0.7.1a4`) are locked to match the original thesis implementation, ensuring:
+- **Compatibility** - Known working configuration
+- **Reproducibility** - Same results as original research
+- **Stability** - Avoiding breaking changes in newer versions
+
+### Project Overview
+
+The QuadCam system is a **stereo vision system for vegetation monitoring** that requires precise camera calibration, real-time processing, and hardware integration - making all these dependencies essential for the system to function properly as a complete multispectral imaging solution.
